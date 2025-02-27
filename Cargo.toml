@@ -1,0 +1,10 @@
+[package]
+name = "convert-some-text-with-other"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[[bin]]
+name = "chtxt"
+path = "src/main.rs"
