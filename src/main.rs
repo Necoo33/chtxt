@@ -219,10 +219,13 @@ fn main() -> io::Result<()> {
                 
                         match path.is_file() {
                             true => {
-                                let mut file_content = String::new();
+                                let file_content;
                                 {
+                                    let mut bytes = vec![];
                                     let mut file = fs::File::open(&path)?;
-                                    file.read_to_string(&mut file_content)?;
+                                    file.read_to_end(&mut bytes)?;
+
+                                    file_content = String::from_utf8_lossy(&bytes).to_string()
                                 }
                         
                                 let updated_content = file_content.replace(&from, &to);
@@ -252,10 +255,13 @@ fn main() -> io::Result<()> {
                 Ok(path) => {
                     match path.is_file() {
                         true => {
-                            let mut file_content = String::new();
+                            let file_content;
                             {
+                                let mut bytes = vec![];
                                 let mut file = fs::File::open(&path)?;
-                                file.read_to_string(&mut file_content)?;
+                                file.read_to_end(&mut bytes)?;
+
+                                file_content = String::from_utf8_lossy(&bytes).to_string()
                             }
                     
                             let updated_content = file_content.replace(&from, &to);
@@ -295,10 +301,13 @@ fn main() -> io::Result<()> {
                 
                         match path.is_file() {
                             true => {
-                                let mut file_content = String::new();
+                                let file_content;
                                 {
+                                    let mut bytes = vec![];
                                     let mut file = fs::File::open(&path)?;
-                                    file.read_to_string(&mut file_content)?;
+                                    file.read_to_end(&mut bytes)?;
+
+                                    file_content = String::from_utf8_lossy(&bytes).to_string()
                                 }
                         
                                 let updated_content = file_content.replace(&from, &to);
@@ -328,10 +337,13 @@ fn main() -> io::Result<()> {
                 Ok(path) => {
                     match path.is_file() {
                         true => {
-                            let mut file_content = String::new();
+                            let file_content;
                             {
+                                let mut bytes = vec![];
                                 let mut file = fs::File::open(&path)?;
-                                file.read_to_string(&mut file_content)?;
+                                file.read_to_end(&mut bytes)?;
+
+                                file_content = String::from_utf8_lossy(&bytes).to_string()
                             }
                     
                             let updated_content = file_content.replace(&from, &to);
@@ -365,10 +377,13 @@ fn main() -> io::Result<()> {
                     Ok(path) => {
                         match path.is_file() {
                             true => {
-                                let mut file_content = String::new();
+                                let file_content;
                                 {
+                                    let mut bytes = vec![];
                                     let mut file = fs::File::open(&path)?;
-                                    file.read_to_string(&mut file_content)?;
+                                    file.read_to_end(&mut bytes)?;
+
+                                    file_content = String::from_utf8_lossy(&bytes).to_string()
                                 }
                         
                                 let updated_content = file_content.replace(&from, &to);
@@ -399,10 +414,13 @@ fn main() -> io::Result<()> {
                     Ok(path) => {
                         match path.is_file() {
                             true => {
-                                let mut file_content = String::new();
+                                let file_content;
                                 {
+                                    let mut bytes = vec![];
                                     let mut file = fs::File::open(&path)?;
-                                    file.read_to_string(&mut file_content)?;
+                                    file.read_to_end(&mut bytes)?;
+
+                                    file_content = String::from_utf8_lossy(&bytes).to_string()
                                 }
                         
                                 let updated_content = file_content.replace(&from, &to);
