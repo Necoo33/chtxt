@@ -5,3 +5,15 @@ version = 4
 [[package]]
 name = "convert-some-text-with-other"
 version = "0.1.0"
+dependencies = [
+ "models",
+ "replacer",
+]
+
+[[package]]
+name = "models"
+version = "0.1.0"
+
+[[package]]
+name = "replacer"
+version = "0.1.0"

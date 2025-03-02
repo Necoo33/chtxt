@@ -1,8 +1,11 @@
-use core::fmt;
-use std::fmt::Display;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::env::{args, current_dir};
+
+extern crate models;
+
+use models::{ChangeSubject, ArgumentCapturingPhase};
+use replacer::replace_string;
 
 fn main() -> io::Result<()> {
     let mut args: Vec<String> = args().collect();
@@ -11,11 +14,17 @@ fn main() -> io::Result<()> {
     let mut to = String::new();
     let mut subject = ChangeSubject::All;
 
+    let mut phase = ArgumentCapturingPhase::Normal;
+    let mut extensions = vec![];
+
     for (index, arg) in args.iter_mut().enumerate() {
         match index {
             1 => {
                 if arg != "" {
-                    from = arg.to_string()
+                    match arg == "--opt" || arg == "--options" {
+                        false => from = arg.to_string(),
+                        true => break
+                    }
                 } else {
                     println!("first argument cannot be empty, exiting...");
                     
@@ -33,6 +42,7 @@ fn main() -> io::Result<()> {
             3 => {
                 match arg.as_str() {
                     "" | "*" | "./*" | "./" | "." => (),
+                    "--ext" | "--extension" | "--extensions" => phase = ArgumentCapturingPhase::AllowedExtensions,
                     _ => {
                         let back_paths = arg.matches("../").count();
 
@@ -86,45 +96,96 @@ fn main() -> io::Result<()> {
                 }
             },
             4 => {
-                if arg != "" {
-                    let back_paths = arg.matches("../").count();
+                match arg.as_str() {
+                    "--ext" | "--extension" | "--extensions" => phase = ArgumentCapturingPhase::AllowedExtensions,
+                    _ => ()
+                }
 
-                    match back_paths {
-                        0 => {
-                            subject = ChangeSubject::Multiple(vec![subject.to_string(), arg.to_string()]);       
-                        },
-                        _ => {
-                            let mut new_back_path = "".to_string();
-
-                            for _ in 0..back_paths {
-                                new_back_path = format!("{}../", new_back_path);
-                            }
-
-                            let pure_name_of_file = arg.replace(&new_back_path, "");
-
-                            subject = ChangeSubject::MultipleBackDir(new_back_path, vec![subject.to_string(), pure_name_of_file])
+                match phase {
+                    ArgumentCapturingPhase::AllowedExtensions => {
+                        match arg.starts_with("."){
+                            true =>  extensions.push(arg.chars().skip(1).collect::<String>()),
+                            false => match !arg.starts_with("--") {
+                                true => extensions.push(arg.clone()),
+                                false => ()
+                            },
                         }
-                    }
+                    },
+                    ArgumentCapturingPhase::Normal => {
+                        if arg != "" {
+                            let back_paths = arg.matches("../").count();
+        
+                            match back_paths {
+                                0 => {
+                                    subject = ChangeSubject::Multiple(vec![subject.to_string(), arg.to_string()]);       
+                                },
+                                _ => {
+                                    let mut new_back_path = "".to_string();
+        
+                                    for _ in 0..back_paths {
+                                        new_back_path = format!("{}../", new_back_path);
+                                    }
+        
+                                    let pure_name_of_file = arg.replace(&new_back_path, "");
+        
+                                    subject = ChangeSubject::MultipleBackDir(new_back_path, vec![subject.to_string(), pure_name_of_file])
+                                }
+                            }
+                        }
+                    },
+                    _ => ()
                 }
             },
             _ => {
-                let back_paths = arg.matches("../").count();
+                match arg.as_str() {
+                    "--ext" | "--extension" | "--extensions" => phase = ArgumentCapturingPhase::AllowedExtensions,
+                    _ => ()
+                }
 
-                match back_paths {
-                    0 => {
-                        if let ChangeSubject::Multiple(ref mut args) = subject {
-                            args.push(arg.to_string());
-                        }     
-                    },
-                    _ => {
-                        if let ChangeSubject::MultipleBackDir(_, ref mut files) = subject {
-                            files.push(arg.to_string());
+                match phase {
+                    ArgumentCapturingPhase::AllowedExtensions => {
+                        match arg.starts_with("."){
+                            true =>  extensions.push(arg.chars().skip(1).collect::<String>()),
+                            false => match !arg.starts_with("--") {
+                                true => extensions.push(arg.clone()),
+                                false => ()
+                            },
                         }
-                    }
+                    },
+                    ArgumentCapturingPhase::Normal => {
+                        let back_paths = arg.matches("../").count();
+
+                        match back_paths {
+                            0 => {
+                                if let ChangeSubject::Multiple(ref mut args) = subject {
+                                    args.push(arg.to_string());
+                                }     
+                            },
+                            _ => {
+                                if let ChangeSubject::MultipleBackDir(_, ref mut files) = subject {
+                                    files.push(arg.to_string());
+                                }
+                            }
+                        }
+                    },
+                    _ => ()
                 }
             }
             _ => continue
         }
+    }
+
+    match from == "" && to == "" {
+        true => {
+            println!("Welcome to chtxt, that program is for changing given texts with another on file/files in specified path.");
+            println!("Synthax for replacing text is like that: \n");
+            println!("(binary) (text you want to replace) (text you want to put) (path specifier) \n");
+            println!("And, here is you flags that you can use: \n");
+            println!("--opt, --options | --ext, --extension, --extensions |");
+
+            return Ok(())
+        },
+        false => ()
     }
 
     println!("Are You Sure? If you are, please type 'y/e/j' or another key to exit.");
@@ -188,23 +249,30 @@ fn main() -> io::Result<()> {
         
                 match path.is_file() {
                     true => {
-                        let file_content;
-                        {
-                            let mut bytes = vec![];
-                            let mut file = fs::File::open(&path)?;
-                            file.read_to_end(&mut bytes)?;
-
-                            file_content = String::from_utf8_lossy(&bytes).to_string()
+                        match extensions.len() {
+                            0 => {
+                                match replace_string(&path, &from, &to) {
+                                    Ok(_) => println!("{:#?}'s content changed", path),
+                                    Err(error) => println!("{}", error)
+                                }
+                            },
+                            _ => {
+                                match path.extension() {
+                                    Some(ext) => {
+                                        for extension in extensions.iter() {
+                                            if *ext == **extension {
+                                                match replace_string(&path, &from, &to) {
+                                                    Ok(_) => println!("{:#?}'s content changed", path),
+                                                    Err(error) => println!("{}", error)
+                                                }
+                                            }
+                                        }
+                                    },
+                                    None => ()
+                                }  
+                            }
                         }
-                
-                        let updated_content = file_content.replace(&from, &to);
-                
-                        {
-                            let mut file = fs::File::create(&path)?;
-                            file.write_all(updated_content.as_bytes())?;
-                        }
-                
-                        println!("{:#?}'s content changed", path);
+              
                     },
                     false => ()
                 }
@@ -222,23 +290,29 @@ fn main() -> io::Result<()> {
                 
                         match path.is_file() {
                             true => {
-                                let file_content;
-                                {
-                                    let mut bytes = vec![];
-                                    let mut file = fs::File::open(&path)?;
-                                    file.read_to_end(&mut bytes)?;
-
-                                    file_content = String::from_utf8_lossy(&bytes).to_string()
+                                match extensions.len() {
+                                    0 => {
+                                        match replace_string(&path, &from, &to) {
+                                            Ok(_) => println!("{:#?}'s content changed", path),
+                                            Err(error) => println!("{}", error)
+                                        }
+                                    },
+                                    _ => {
+                                        match path.extension() {
+                                            Some(ext) => {
+                                                for extension in extensions.iter() {
+                                                    if *ext == **extension {
+                                                        match replace_string(&path, &from, &to) {
+                                                            Ok(_) => println!("{:#?}'s content changed", path),
+                                                            Err(error) => println!("{}", error)
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            None => ()
+                                        }  
+                                    }
                                 }
-                        
-                                let updated_content = file_content.replace(&from, &to);
-                        
-                                {
-                                    let mut file = fs::File::create(&path)?;
-                                    file.write_all(updated_content.as_bytes())?;
-                                }
-                        
-                                println!("{:#?}'s content changed", path);
                             },
                             false => ()
                         }
@@ -258,23 +332,29 @@ fn main() -> io::Result<()> {
                 Ok(path) => {
                     match path.is_file() {
                         true => {
-                            let file_content;
-                            {
-                                let mut bytes = vec![];
-                                let mut file = fs::File::open(&path)?;
-                                file.read_to_end(&mut bytes)?;
-
-                                file_content = String::from_utf8_lossy(&bytes).to_string()
+                            match extensions.len() {
+                                0 => {
+                                    match replace_string(&path, &from, &to) {
+                                        Ok(_) => println!("{:#?}'s content changed", path),
+                                        Err(error) => println!("{}", error)
+                                    }
+                                },
+                                _ => {
+                                    match path.extension() {
+                                        Some(ext) => {
+                                            for extension in extensions.iter() {
+                                                if *ext == **extension {
+                                                    match replace_string(&path, &from, &to) {
+                                                        Ok(_) => println!("{:#?}'s content changed", path),
+                                                        Err(error) => println!("{}", error)
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        None => ()
+                                    }  
+                                }
                             }
-                    
-                            let updated_content = file_content.replace(&from, &to);
-                    
-                            {
-                                let mut file = fs::File::create(&path)?;
-                                file.write_all(updated_content.as_bytes())?;
-                            }
-                    
-                            println!("{:#?}'s content changed", path);
                         },
                         false => {
                             println!("{} is not a file, exiting...", singular);
@@ -296,31 +376,35 @@ fn main() -> io::Result<()> {
             match join_paths.canonicalize() {
                 Ok(path) => {
                     for entry in fs::read_dir(&path)? {
-                        println!("our dir entry: {:#?}", entry);
-
                         let entry = entry?;
                 
                         let path = entry.path();
                 
                         match path.is_file() {
                             true => {
-                                let file_content;
-                                {
-                                    let mut bytes = vec![];
-                                    let mut file = fs::File::open(&path)?;
-                                    file.read_to_end(&mut bytes)?;
-
-                                    file_content = String::from_utf8_lossy(&bytes).to_string()
+                                match extensions.len() {
+                                    0 => {
+                                        match replace_string(&path, &from, &to) {
+                                            Ok(_) => println!("{:#?}'s content changed", path),
+                                            Err(error) => println!("{}", error)
+                                        }
+                                    },
+                                    _ => {
+                                        match path.extension() {
+                                            Some(ext) => {
+                                                for extension in extensions.iter() {
+                                                    if *ext == **extension {
+                                                        match replace_string(&path, &from, &to) {
+                                                            Ok(_) => println!("{:#?}'s content changed", path),
+                                                            Err(error) => println!("{}", error)
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            None => ()
+                                        }  
+                                    }
                                 }
-                        
-                                let updated_content = file_content.replace(&from, &to);
-                        
-                                {
-                                    let mut file = fs::File::create(&path)?;
-                                    file.write_all(updated_content.as_bytes())?;
-                                }
-                        
-                                println!("{:#?}'s content changed", path);
                             },
                             false => ()
                         }
@@ -340,23 +424,29 @@ fn main() -> io::Result<()> {
                 Ok(path) => {
                     match path.is_file() {
                         true => {
-                            let file_content;
-                            {
-                                let mut bytes = vec![];
-                                let mut file = fs::File::open(&path)?;
-                                file.read_to_end(&mut bytes)?;
-
-                                file_content = String::from_utf8_lossy(&bytes).to_string()
+                            match extensions.len() {
+                                0 => {
+                                    match replace_string(&path, &from, &to) {
+                                        Ok(_) => println!("{:#?}'s content changed", path),
+                                        Err(error) => println!("{}", error)
+                                    }
+                                },
+                                _ => {
+                                    match path.extension() {
+                                        Some(ext) => {
+                                            for extension in extensions.iter() {
+                                                if *ext == **extension {
+                                                    match replace_string(&path, &from, &to) {
+                                                        Ok(_) => println!("{:#?}'s content changed", path),
+                                                        Err(error) => println!("{}", error)
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        None => ()
+                                    }  
+                                }
                             }
-                    
-                            let updated_content = file_content.replace(&from, &to);
-                    
-                            {
-                                let mut file = fs::File::create(&path)?;
-                                file.write_all(updated_content.as_bytes())?;
-                            }
-                    
-                            println!("{:#?}'s content changed", path);
                         },
                         false => {
                             println!("{} is not a file, exiting...", file);
@@ -380,23 +470,29 @@ fn main() -> io::Result<()> {
                     Ok(path) => {
                         match path.is_file() {
                             true => {
-                                let file_content;
-                                {
-                                    let mut bytes = vec![];
-                                    let mut file = fs::File::open(&path)?;
-                                    file.read_to_end(&mut bytes)?;
-
-                                    file_content = String::from_utf8_lossy(&bytes).to_string()
+                                match extensions.len() {
+                                    0 => {
+                                        match replace_string(&path, &from, &to) {
+                                            Ok(_) => println!("{:#?}'s content changed", path),
+                                            Err(error) => println!("{}", error)
+                                        }
+                                    },
+                                    _ => {
+                                        match path.extension() {
+                                            Some(ext) => {
+                                                for extension in extensions.iter() {
+                                                    if *ext == **extension {
+                                                        match replace_string(&path, &from, &to) {
+                                                            Ok(_) => println!("{:#?}'s content changed", path),
+                                                            Err(error) => println!("{}", error)
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            None => ()
+                                        }  
+                                    }
                                 }
-                        
-                                let updated_content = file_content.replace(&from, &to);
-                        
-                                {
-                                    let mut file = fs::File::create(&path)?;
-                                    file.write_all(updated_content.as_bytes())?;
-                                }
-                        
-                                println!("{:#?}'s content changed", path);
                             },
                             false => ()
                         }
@@ -417,23 +513,29 @@ fn main() -> io::Result<()> {
                     Ok(path) => {
                         match path.is_file() {
                             true => {
-                                let file_content;
-                                {
-                                    let mut bytes = vec![];
-                                    let mut file = fs::File::open(&path)?;
-                                    file.read_to_end(&mut bytes)?;
-
-                                    file_content = String::from_utf8_lossy(&bytes).to_string()
+                                match extensions.len() {
+                                    0 => {
+                                        match replace_string(&path, &from, &to) {
+                                            Ok(_) => println!("{:#?}'s content changed", path),
+                                            Err(error) => println!("{}", error)
+                                        }
+                                    },
+                                    _ => {
+                                        match path.extension() {
+                                            Some(ext) => {
+                                                for extension in extensions.iter() {
+                                                    if *ext == **extension {
+                                                        match replace_string(&path, &from, &to) {
+                                                            Ok(_) => println!("{:#?}'s content changed", path),
+                                                            Err(error) => println!("{}", error)
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            None => ()
+                                        }  
+                                    }
                                 }
-                        
-                                let updated_content = file_content.replace(&from, &to);
-                        
-                                {
-                                    let mut file = fs::File::create(&path)?;
-                                    file.write_all(updated_content.as_bytes())?;
-                                }
-                        
-                                println!("{:#?}'s content changed", path);
                             },
                             false => ()
                         }
@@ -452,72 +554,3 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-pub enum ChangeSubject {
-    Singular(String), Multiple(Vec<String>), All, AllForwardDir(String), SingularBackDir(String, String), AllBackDir(String), MultipleBackDir(String, Vec<String>)
-}
-
-impl Display for ChangeSubject {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let current_dir = match current_dir() {
-            Ok(dir) => dir,
-            Err(error) => {
-                 println!("We cannot get your path for that reason: {}", error);
-
-                 return Err(fmt::Error)
-             } 
-         };
-
-        match self {
-            ChangeSubject::All => write!(f, "{}/*", current_dir.display()),
-            ChangeSubject::AllForwardDir(forward) => {
-                let file_path = current_dir.join(forward);
-
-                match file_path.canonicalize() {
-                    Ok(path) => write!(f, "{}", path.display()),
-                    Err(error) => {
-                        println!("We cannot get your path for that reason: {}", error);
-
-                        Err(fmt::Error)
-                    }
-                }
-            }
-            ChangeSubject::Singular(singular) => {
-                let file_path = current_dir.join(singular);
-
-                match file_path.canonicalize() {
-                    Ok(path) => write!(f, "{}", path.display()),
-                    Err(error) => {
-                        println!("We cannot get your path for that reason: {}", error);
-
-                        Err(fmt::Error)
-                    }
-                }
-            },
-            ChangeSubject::AllBackDir(back_dirs) => {
-                let total_dir = current_dir.join(back_dirs).join("/*");
-
-                match total_dir.canonicalize() {
-                    Ok(path) => write!(f, "{}", path.display()),
-                    Err(error) => {
-                        println!("We cannot get your path for that reason: {}", error);
-
-                        Err(fmt::Error)
-                    }
-                }
-            },
-            ChangeSubject::SingularBackDir(back_dirs, singular) => {
-                let total_dir = current_dir.join(back_dirs).join(singular);
-
-                match total_dir.canonicalize() {
-                    Ok(path) => write!(f, "{}", path.display()),
-                    Err(error) => {
-                        println!("We cannot get your path for that reason: {}", error);
-
-                        Err(fmt::Error)
-                    }
-                }
-            },
-            _ => Ok(()) // not implemented yet
-        }
-    }
-}
