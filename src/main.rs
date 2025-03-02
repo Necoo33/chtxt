@@ -23,7 +23,11 @@ fn main() -> io::Result<()> {
                 if arg != "" {
                     match arg == "--opt" || arg == "--options" {
                         false => from = arg.to_string(),
-                        true => break
+                        true => {
+                            phase = ArgumentCapturingPhase::Options;
+
+                            break
+                        }
                     }
                 } else {
                     println!("first argument cannot be empty, exiting...");
@@ -175,17 +179,17 @@ fn main() -> io::Result<()> {
         }
     }
 
-    match from == "" && to == "" {
-        true => {
+    match phase {
+        ArgumentCapturingPhase::Options => {
             println!("Welcome to chtxt, that program is for changing given texts with another on file/files in specified path.");
             println!("Synthax for replacing text is like that: \n");
-            println!("(binary) (text you want to replace) (text you want to put) (path specifier) \n");
+            println!("(binary) (text you want to replace) (text you want to put) (path specifier) (other flags and arguments) \n");
             println!("And, here is you flags that you can use: \n");
             println!("--opt, --options | --ext, --extension, --extensions |");
 
             return Ok(())
         },
-        false => ()
+        _ => ()
     }
 
     println!("Are You Sure? If you are, please type 'y/e/j' or another key to exit.");

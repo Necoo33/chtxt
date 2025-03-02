@@ -6,7 +6,7 @@ It warns and asks you to how you proceed in order to prevent you to make mistake
 
 The synthax is that:
 
-`(binary) (text you want to replace) (text you want to put) (path specifier)`
+`(binary) (text you want to replace) (text you want to put) (path specifier) (other flags and arguments)`
 
 ## Cross Platform Support
 
