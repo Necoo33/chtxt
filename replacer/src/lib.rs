@@ -11,6 +11,9 @@ use std::os::unix::fs::MetadataExt;
 #[cfg(target_os = "windows")]
 use std::os::windows::fs::MetadataExt;
 
+#[cfg(target_os = "macos")]
+use std::os::darwin::fs::MetadataExt;
+
 // there is two replacement strategies. The most logical thing to do is if from string is too small just use
 // replace string and if it's large use streaming.
 
@@ -22,8 +25,6 @@ pub fn replace_string(path: &PathBuf, from: &String, to: &String, threshold: u64
 
     #[cfg(target_os = "linux")]
     {
-        use std::os::unix::fs::MetadataExt;
-
         match file.metadata() {
             Ok(meta) => {
                 if meta.size() > threshold {
@@ -60,6 +61,39 @@ pub fn replace_string(path: &PathBuf, from: &String, to: &String, threshold: u64
         match file.metadata() {
             Ok(meta) => {
                 if meta.file_size() > threshold {
+                    match replace_string_streaming(&mut file, from, to) {
+                        Ok(_) => Ok(()),
+                        Err(error) => {
+                            println!("cannot replaced string for that reason: {}", error);
+
+                            return Err(error)
+
+                        }
+                    }
+                } else {
+                    match replace_string_directly(path, from, to) {
+                        Ok(_) => (),
+                        Err(error) => {
+                            println!("cannot replaced string for that reason: {}", error);
+
+                            return Err(error)
+                        }
+                    }
+                }
+            },
+            Err(error) => {
+                println!("Cannot reach file's metadata for that reason: {}", error);
+
+                return Err(error)
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        match file.metadata() {
+            Ok(meta) => {
+                if meta.st_size() > threshold {
                     match replace_string_streaming(&mut file, from, to) {
                         Ok(_) => Ok(()),
                         Err(error) => {
@@ -273,6 +307,6 @@ fn replace_in_buffer(buffer: &mut Vec<u8>, from: &[u8], to: &[u8]) {
 }*/
 
 // it benefits to find how many times needle occures on haystack.
-fn count_occurrences(haystack: Cow<str>, needle: &str) -> usize {
+/*fn count_occurrences(haystack: Cow<str>, needle: &str) -> usize {
     haystack.matches(needle).count()
-}
+}*/

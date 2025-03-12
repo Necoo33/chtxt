@@ -4,6 +4,8 @@ This program is a simple tool for changing the content of files in terminal with
 
 It warns and asks you to how you proceed in order to prevent you to make mistakes.
 
+It also supports buffering. If you don't specify the buffering threshold, it scans every file with streaming which is bigger than 8 kb.
+
 The synthax is that:
 
 `(binary) (text you want to replace) (text you want to put) (path specifier) (other flags and arguments)`
@@ -46,3 +48,8 @@ It changes every "hello" chunk with "world" in files on specified paths.
 
 It changes every "hello" chunk with "world" in files on specified path, also works for parent directories.
 
+## Flags
+
+- `--opt`, `--options`: It prompts options and does nothing other.
+- `--ext`, `--extension` `--extensions`: It specifies the extensions of subject-to-change files. In other words, If you specify that, only the files with that extensions will be scanned and changes. Examples: `--ext js css html`, `--extensions .js .css .html`
+- `--bt`, `--buffering-threshold`: It's default 8192 byte(8 kb.), that means if a file is bigger than 8 kb will be scanned via buffering, if it smaller than that it scanned directly. Example: `--bt 8388608`
