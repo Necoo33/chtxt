@@ -75,7 +75,7 @@ impl Display for ChangeSubject {
 
 #[derive(Debug)]
 pub enum ArgumentCapturingPhase {
-    Normal, AllowedExtensions, Options
+    Normal, AllowedExtensions, Options, BufferingThreshold
 }
 
 /*impl Display for ArgumentCapturingPhase {

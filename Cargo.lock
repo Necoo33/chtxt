@@ -17,3 +17,6 @@ version = "0.1.0"
 [[package]]
 name = "replacer"
 version = "0.1.0"
+dependencies = [
+ "models",
+]

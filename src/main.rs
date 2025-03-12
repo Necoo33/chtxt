@@ -17,6 +17,8 @@ fn main() -> io::Result<()> {
     let mut phase = ArgumentCapturingPhase::Normal;
     let mut extensions = vec![];
 
+    let mut threshold: u64 = 8192;
+
     for (index, arg) in args.iter_mut().enumerate() {
         match index {
             1 => {
@@ -47,6 +49,7 @@ fn main() -> io::Result<()> {
                 match arg.as_str() {
                     "" | "*" | "./*" | "./" | "." => (),
                     "--ext" | "--extension" | "--extensions" => phase = ArgumentCapturingPhase::AllowedExtensions,
+                    "--bt" | "--buffering-threshold" => phase = ArgumentCapturingPhase::BufferingThreshold,
                     _ => {
                         let back_paths = arg.matches("../").count();
 
@@ -102,6 +105,7 @@ fn main() -> io::Result<()> {
             4 => {
                 match arg.as_str() {
                     "--ext" | "--extension" | "--extensions" => phase = ArgumentCapturingPhase::AllowedExtensions,
+                    "--bt" | "--buffering-threshold" => phase = ArgumentCapturingPhase::BufferingThreshold,
                     _ => ()
                 }
 
@@ -137,12 +141,23 @@ fn main() -> io::Result<()> {
                             }
                         }
                     },
+                    ArgumentCapturingPhase::BufferingThreshold => {
+                        match arg.parse::<u64>() {
+                            Ok(new_threshold) => threshold = new_threshold,
+                            Err(_) => {
+                                println!("Invalid buffering threshold argument, exiting...");
+
+                                return Ok(())
+                            }
+                        }
+                    }
                     _ => ()
                 }
             },
             _ => {
                 match arg.as_str() {
                     "--ext" | "--extension" | "--extensions" => phase = ArgumentCapturingPhase::AllowedExtensions,
+                    "--bt" | "--buffering-threshold" => phase = ArgumentCapturingPhase::BufferingThreshold,
                     _ => ()
                 }
 
@@ -172,6 +187,16 @@ fn main() -> io::Result<()> {
                             }
                         }
                     },
+                    ArgumentCapturingPhase::BufferingThreshold => {
+                        match arg.parse::<u64>() {
+                            Ok(new_threshold) => threshold = new_threshold,
+                            Err(_) => {
+                                println!("Invalid buffering threshold argument, exiting...");
+
+                                return Ok(())
+                            }
+                        }
+                    }
                     _ => ()
                 }
             }
@@ -255,7 +280,7 @@ fn main() -> io::Result<()> {
                     true => {
                         match extensions.len() {
                             0 => {
-                                match replace_string(&path, &from, &to) {
+                                match replace_string(&path, &from, &to, threshold) {
                                     Ok(_) => println!("{:#?}'s content changed", path),
                                     Err(error) => println!("{}", error)
                                 }
@@ -265,7 +290,7 @@ fn main() -> io::Result<()> {
                                     Some(ext) => {
                                         for extension in extensions.iter() {
                                             if *ext == **extension {
-                                                match replace_string(&path, &from, &to) {
+                                                match replace_string(&path, &from, &to, threshold) {
                                                     Ok(_) => println!("{:#?}'s content changed", path),
                                                     Err(error) => println!("{}", error)
                                                 }
@@ -296,7 +321,7 @@ fn main() -> io::Result<()> {
                             true => {
                                 match extensions.len() {
                                     0 => {
-                                        match replace_string(&path, &from, &to) {
+                                        match replace_string(&path, &from, &to, threshold) {
                                             Ok(_) => println!("{:#?}'s content changed", path),
                                             Err(error) => println!("{}", error)
                                         }
@@ -306,7 +331,7 @@ fn main() -> io::Result<()> {
                                             Some(ext) => {
                                                 for extension in extensions.iter() {
                                                     if *ext == **extension {
-                                                        match replace_string(&path, &from, &to) {
+                                                        match replace_string(&path, &from, &to, threshold) {
                                                             Ok(_) => println!("{:#?}'s content changed", path),
                                                             Err(error) => println!("{}", error)
                                                         }
@@ -338,7 +363,7 @@ fn main() -> io::Result<()> {
                         true => {
                             match extensions.len() {
                                 0 => {
-                                    match replace_string(&path, &from, &to) {
+                                    match replace_string(&path, &from, &to, threshold) {
                                         Ok(_) => println!("{:#?}'s content changed", path),
                                         Err(error) => println!("{}", error)
                                     }
@@ -348,7 +373,7 @@ fn main() -> io::Result<()> {
                                         Some(ext) => {
                                             for extension in extensions.iter() {
                                                 if *ext == **extension {
-                                                    match replace_string(&path, &from, &to) {
+                                                    match replace_string(&path, &from, &to, threshold) {
                                                         Ok(_) => println!("{:#?}'s content changed", path),
                                                         Err(error) => println!("{}", error)
                                                     }
@@ -388,7 +413,7 @@ fn main() -> io::Result<()> {
                             true => {
                                 match extensions.len() {
                                     0 => {
-                                        match replace_string(&path, &from, &to) {
+                                        match replace_string(&path, &from, &to, threshold) {
                                             Ok(_) => println!("{:#?}'s content changed", path),
                                             Err(error) => println!("{}", error)
                                         }
@@ -398,7 +423,7 @@ fn main() -> io::Result<()> {
                                             Some(ext) => {
                                                 for extension in extensions.iter() {
                                                     if *ext == **extension {
-                                                        match replace_string(&path, &from, &to) {
+                                                        match replace_string(&path, &from, &to, threshold) {
                                                             Ok(_) => println!("{:#?}'s content changed", path),
                                                             Err(error) => println!("{}", error)
                                                         }
@@ -430,7 +455,7 @@ fn main() -> io::Result<()> {
                         true => {
                             match extensions.len() {
                                 0 => {
-                                    match replace_string(&path, &from, &to) {
+                                    match replace_string(&path, &from, &to, threshold) {
                                         Ok(_) => println!("{:#?}'s content changed", path),
                                         Err(error) => println!("{}", error)
                                     }
@@ -440,7 +465,7 @@ fn main() -> io::Result<()> {
                                         Some(ext) => {
                                             for extension in extensions.iter() {
                                                 if *ext == **extension {
-                                                    match replace_string(&path, &from, &to) {
+                                                    match replace_string(&path, &from, &to, threshold) {
                                                         Ok(_) => println!("{:#?}'s content changed", path),
                                                         Err(error) => println!("{}", error)
                                                     }
@@ -476,7 +501,7 @@ fn main() -> io::Result<()> {
                             true => {
                                 match extensions.len() {
                                     0 => {
-                                        match replace_string(&path, &from, &to) {
+                                        match replace_string(&path, &from, &to, threshold) {
                                             Ok(_) => println!("{:#?}'s content changed", path),
                                             Err(error) => println!("{}", error)
                                         }
@@ -486,7 +511,7 @@ fn main() -> io::Result<()> {
                                             Some(ext) => {
                                                 for extension in extensions.iter() {
                                                     if *ext == **extension {
-                                                        match replace_string(&path, &from, &to) {
+                                                        match replace_string(&path, &from, &to, threshold) {
                                                             Ok(_) => println!("{:#?}'s content changed", path),
                                                             Err(error) => println!("{}", error)
                                                         }
@@ -519,7 +544,7 @@ fn main() -> io::Result<()> {
                             true => {
                                 match extensions.len() {
                                     0 => {
-                                        match replace_string(&path, &from, &to) {
+                                        match replace_string(&path, &from, &to, threshold) {
                                             Ok(_) => println!("{:#?}'s content changed", path),
                                             Err(error) => println!("{}", error)
                                         }
@@ -529,7 +554,7 @@ fn main() -> io::Result<()> {
                                             Some(ext) => {
                                                 for extension in extensions.iter() {
                                                     if *ext == **extension {
-                                                        match replace_string(&path, &from, &to) {
+                                                        match replace_string(&path, &from, &to, threshold) {
                                                             Ok(_) => println!("{:#?}'s content changed", path),
                                                             Err(error) => println!("{}", error)
                                                         }
