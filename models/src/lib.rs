@@ -97,3 +97,11 @@ impl ArgumentCapturingPhase {
         }
     }
 }*/
+
+pub enum ChangeString<'a> {
+    Whole(&'a [u8]), FromStart(&'a [u8]), FromEnd(&'a [u8]), None
+}
+
+pub enum ChangeStatus {
+    Whole, LastToStart, LastCollected, None
+}

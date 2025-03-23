@@ -50,6 +50,6 @@ It changes every "hello" chunk with "world" in files on specified path, also wor
 
 ## Flags
 
-- `--opt`, `--options`: It prompts options and does nothing other.
+- `--opt`, `--options`: It prompts options and makes program exit after prompting options.
 - `--ext`, `--extension` `--extensions`: It specifies the extensions of subject-to-change files. In other words, If you specify that, only the files with that extensions will be scanned and changes. Examples: `--ext js css html`, `--extensions .js .css .html`
 - `--bt`, `--buffering-threshold`: It's default 8192 byte(8 kb.), that means if a file is bigger than 8 kb will be scanned via buffering, if it smaller than that it scanned directly. Example: `--bt 8388608`
