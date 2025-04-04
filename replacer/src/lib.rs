@@ -30,11 +30,9 @@ pub fn replace_string(path: &PathBuf, from: &String, to: &String, threshold: u64
 
     #[cfg(target_os = "linux")]
     {
-        println!("it came to the linux run!");
         match file.metadata() {
             Ok(meta) => {
                 if meta.size() > threshold {
-                    println!("replace string with streamin!");
                     match replace_string_streaming(&mut file, path, from, to) {
                         Ok(_) => Ok(()),
                         Err(error) => {
@@ -45,7 +43,6 @@ pub fn replace_string(path: &PathBuf, from: &String, to: &String, threshold: u64
                         }
                     }
                 } else {
-                    println!("replace string directly!");
                     match replace_string_directly(path, from, to) {
                         Ok(_) => Ok(()),
                         Err(error) => {
@@ -183,8 +180,6 @@ pub fn replace_string_streaming(file: &mut File, path: &PathBuf, from: &String, 
 // 2 - check a from's last chars are matches with chunks first chars.
 // 3 - if it is, check the first chars of next from is matches with current remaining chars of from. 
 pub fn stream(file: &mut File, path: &PathBuf, from: &String, to: &String) -> Result<(), std::io::Error> {
-    let byte_size = from.chars().count();
-    
     let mut last = None;
     let mut first = None;
 
@@ -217,16 +212,12 @@ pub fn stream(file: &mut File, path: &PathBuf, from: &String, to: &String) -> Re
                 
                 match last {
                     None => {
-                        //let chars = from.chars().count();
-
                         let mut clone_from = get_from.clone();
 
                         while clone_from.pop().is_some() {
                             match clone_buffer.ends_with(&*clone_from) {
                                 true => {
                                     prev_buffer = buffer.clone();
-
-                                    //println!("işte prev buffer: {:#?}", prev_buffer);
 
                                     last = Some(clone_from.clone());
 
@@ -239,7 +230,6 @@ pub fn stream(file: &mut File, path: &PathBuf, from: &String, to: &String) -> Re
                         }
                     },
                     Some(_) => {
-                        // burada da first varsa yapılacaklar yazılacak.
                         let mut from_length = get_from.chars().count();
 
                         match from_length {
@@ -284,23 +274,8 @@ pub fn stream(file: &mut File, path: &PathBuf, from: &String, to: &String) -> Re
         }
 
         match should_write {
-            ChangeStatus::None => {
-                println!("none'a gelindi!");
-                /*match file.write_all(&buffer) {
-                    Ok(_) => (),
-                    Err(error) => return Err(error)
-                }*/
-
-                all_buffers.push(buffer);
-            },
+            ChangeStatus::None => all_buffers.push(buffer),
             ChangeStatus::Whole => {
-                println!("whole'a gelindi!");
-                /*match file.write_all(&to.as_bytes()) {
-                    Ok(_) => (),
-                    Err(error) => return Err(error)
-                }*/
-
-                
                 all_buffers.push(get_string.replace(from, to).as_bytes().to_vec());
 
                 last = None;
@@ -308,12 +283,6 @@ pub fn stream(file: &mut File, path: &PathBuf, from: &String, to: &String) -> Re
             },
             ChangeStatus::LastCollected => (),
             ChangeStatus::LastToStart => {
-                println!("last to start'a gelindi!");
-                /*match prev_buffer.len() {
-                    0 => panic!("prev_buffer variable shouldn't be the length of 0 at this moment, panicking."),
-                    _ => ()
-                }*/
-
                 match last {
                     None => panic!("last variable shouldn't be the length of 0 at this moment, panicking."),
                     Some(mut last) => {
@@ -329,14 +298,7 @@ pub fn stream(file: &mut File, path: &PathBuf, from: &String, to: &String) -> Re
                         for (offset, byte) in last_as_bytes.iter().enumerate() {
                             prev_buffer[(start_length + offset) - 1] = *byte;
                         }
-
-                        /*for i in start_length..prev_buffer.len() {
-                            prev_buffer[i] = last_as_bytes[last_count];
-
-                            last_count = last_count + 1;
-                        }*/
-
-                        println!("işte ve şimdi prev buffer: {:#?}", prev_buffer);
+                        
                         all_buffers.push(prev_buffer);
                     }
                 }
@@ -351,11 +313,6 @@ pub fn stream(file: &mut File, path: &PathBuf, from: &String, to: &String) -> Re
                         }
 
                         all_buffers.push(buffer);
-
-                        /*match file.write_all(&buffer) {
-                            Ok(_) => (),
-                            Err(error) => return Err(error)
-                        }*/
                     }
 
                 }
@@ -373,9 +330,7 @@ pub fn stream(file: &mut File, path: &PathBuf, from: &String, to: &String) -> Re
     };
 
     for mut buffer in all_buffers {
-        println!("işte yazılan buffer'lar: {:#?}", buffer);
-
-        while buffer.last() == Some(&0) {
+        while buffer.last() == Some(&0x00) {
             buffer.pop();
         }
 

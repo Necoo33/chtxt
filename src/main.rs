@@ -1,6 +1,7 @@
 use std::fs;
 use std::io::{self, Read, Write};
 use std::env::{args, current_dir};
+use std::time::Instant;
 
 extern crate models;
 
@@ -72,7 +73,7 @@ fn main() -> io::Result<()> {
                                         } else {
                                             let arg = arg.replace("./", "");
 
-                                            println!("arg in current situation: {}", arg);
+                                            //println!("arg in current situation: {}", arg);
             
                                             subject = ChangeSubject::Singular(arg.clone())
                                         }
@@ -80,7 +81,7 @@ fn main() -> io::Result<()> {
                                     false => {
                                         let arg = arg;
 
-                                        println!("arg in current situation: {}", arg);
+                                        //println!("arg in current situation: {}", arg);
         
                                         subject = ChangeSubject::Singular(arg.clone())
                                     }
@@ -273,7 +274,7 @@ fn main() -> io::Result<()> {
         }
     };
 
-    println!("your current directory: {:?}", current_dir);
+    //println!("your current directory: {:?}", current_dir);
     println!("Are you want to proceed? Type 'y/e/j' if you want.");
 
     let answer = &mut String::new();
@@ -291,6 +292,8 @@ fn main() -> io::Result<()> {
         "y" | "e" | "j" => (),
         _ => return Ok(())
     }
+
+    //let instant = Instant::now();
 
     match subject {
         ChangeSubject::All => {
@@ -602,6 +605,8 @@ fn main() -> io::Result<()> {
         }
         _ => println!("Not implemented yet!")
     }
+
+    // println!("elapsed time: {}", instant.elapsed().as_millis());
 
     Ok(())
 }
