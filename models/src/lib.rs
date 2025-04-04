@@ -78,26 +78,6 @@ pub enum ArgumentCapturingPhase {
     Normal, AllowedExtensions, Options, BufferingThreshold, BufferSize
 }
 
-/*impl Display for ArgumentCapturingPhase {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ArgumentCapturingPhase::Options => write!(f, "--opt"),
-            ArgumentCapturingPhase::AllowedExtensions => write!(f, "--ext"),
-            ArgumentCapturingPhase::Normal => write!(f, "")
-        }
-    }
-}
-
-impl ArgumentCapturingPhase {
-    pub fn create(argument: String) -> Self {
-        match argument.as_str() {
-            "--opt" => ArgumentCapturingPhase::Options,
-            "--ext" => ArgumentCapturingPhase::AllowedExtensions,
-            _ => ArgumentCapturingPhase::Normal
-        }
-    }
-}*/
-
 pub enum ChangeString<'a> {
     Whole(&'a [u8]), FromStart(&'a [u8]), FromEnd(&'a [u8]), None
 }
