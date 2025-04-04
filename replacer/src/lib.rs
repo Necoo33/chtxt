@@ -22,7 +22,7 @@ use std::os::darwin::fs::MetadataExt;
 // there is two replacement strategies. The most logical thing to do is if from string is too small just use
 // replace string and if it's large use streaming.
 
-pub fn replace_string(path: &PathBuf, from: &String, to: &String, threshold: u64) -> Result<(), std::io::Error> {
+pub fn replace_string(path: &PathBuf, from: &String, to: &String, threshold: u64, buffer_size: usize) -> Result<(), std::io::Error> {
     let mut file = match File::open(path) {
         Ok(file) => file,
         Err(error) => return Err(error)
@@ -33,7 +33,7 @@ pub fn replace_string(path: &PathBuf, from: &String, to: &String, threshold: u64
         match file.metadata() {
             Ok(meta) => {
                 if meta.size() > threshold {
-                    match replace_string_streaming(&mut file, path, from, to) {
+                    match replace_string_streaming(&mut file, path, from, to, buffer_size) {
                         Ok(_) => Ok(()),
                         Err(error) => {
                             println!("cannot replaced string for that reason: {}", error);
@@ -163,8 +163,8 @@ pub fn replace_string_directly(path: &PathBuf, from: &String, to: &String) -> Re
     Ok(())
 }
 
-pub fn replace_string_streaming(file: &mut File, path: &PathBuf, from: &String, to: &String) -> Result<(), std::io::Error> {
-    match stream(file, path, from, to) {
+pub fn replace_string_streaming(file: &mut File, path: &PathBuf, from: &String, to: &String, buffer_size: usize) -> Result<(), std::io::Error> {
+    match stream(file, path, from, to, buffer_size) {
         Ok(_) => Ok(()),
         Err(error) => Err(error)
     }
@@ -179,7 +179,7 @@ pub fn replace_string_streaming(file: &mut File, path: &PathBuf, from: &String, 
 // 1 - read the files bytes.
 // 2 - check a from's last chars are matches with chunks first chars.
 // 3 - if it is, check the first chars of next from is matches with current remaining chars of from. 
-pub fn stream(file: &mut File, path: &PathBuf, from: &String, to: &String) -> Result<(), std::io::Error> {
+pub fn stream(file: &mut File, path: &PathBuf, from: &String, to: &String, buffer_size: usize) -> Result<(), std::io::Error> {
     let mut last = None;
     let mut first = None;
 
@@ -188,7 +188,7 @@ pub fn stream(file: &mut File, path: &PathBuf, from: &String, to: &String) -> Re
     let mut all_buffers: Vec<Vec<u8>> = vec![];
 
     loop {
-        let mut buffer = vec![0; 8192];
+        let mut buffer = vec![0; buffer_size];
 
         match file.read(&mut buffer) {
             Ok(0) => break, // Okuma bitti

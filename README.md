@@ -53,3 +53,4 @@ It changes every "hello" chunk with "world" in files on specified path, also wor
 - `--opt`, `--options`: It prompts options and makes program exit after prompting options.
 - `--ext`, `--extension` `--extensions`: It specifies the extensions of subject-to-change files. In other words, If you specify that, only the files with that extensions will be scanned and changes. Examples: `--ext js css html`, `--extensions .js .css .html`
 - `--bt`, `--buffering-threshold`: It's default 8192 byte(8 kb.), that means if a file is bigger than 8 kb will be scanned via buffering, if it smaller than that it scanned directly. Example: `--bt 8388608`
+- `--bs`, `--buffer-size`: It's default to 65536 byte(64 kb.), that means if you scanning files via streaming, buffered chunks will be 64 kb big. If you scan files directly, it has not any effect.
