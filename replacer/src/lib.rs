@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::VecDeque;
 use std::fmt::Error;
 use std::fs::File;
 use std::io::{self, Read, Write};
@@ -29,10 +30,12 @@ pub fn replace_string(path: &PathBuf, from: &String, to: &String, threshold: u64
 
     #[cfg(target_os = "linux")]
     {
+        println!("it came to the linux run!");
         match file.metadata() {
             Ok(meta) => {
                 if meta.size() > threshold {
-                    match replace_string_streaming(&mut file, from, to) {
+                    println!("replace string with streamin!");
+                    match replace_string_streaming(&mut file, path, from, to) {
                         Ok(_) => Ok(()),
                         Err(error) => {
                             println!("cannot replaced string for that reason: {}", error);
@@ -42,6 +45,7 @@ pub fn replace_string(path: &PathBuf, from: &String, to: &String, threshold: u64
                         }
                     }
                 } else {
+                    println!("replace string directly!");
                     match replace_string_directly(path, from, to) {
                         Ok(_) => Ok(()),
                         Err(error) => {
@@ -162,8 +166,8 @@ pub fn replace_string_directly(path: &PathBuf, from: &String, to: &String) -> Re
     Ok(())
 }
 
-pub fn replace_string_streaming(file: &mut File, from: &String, to: &String) -> Result<(), std::io::Error> {
-    match stream(file, from, to) {
+pub fn replace_string_streaming(file: &mut File, path: &PathBuf, from: &String, to: &String) -> Result<(), std::io::Error> {
+    match stream(file, path, from, to) {
         Ok(_) => Ok(()),
         Err(error) => Err(error)
     }
@@ -178,7 +182,7 @@ pub fn replace_string_streaming(file: &mut File, from: &String, to: &String) -> 
 // 1 - read the files bytes.
 // 2 - check a from's last chars are matches with chunks first chars.
 // 3 - if it is, check the first chars of next from is matches with current remaining chars of from. 
-pub fn stream(file: &mut File, from: &String, to: &String) -> Result<(), std::io::Error> {
+pub fn stream(file: &mut File, path: &PathBuf, from: &String, to: &String) -> Result<(), std::io::Error> {
     let byte_size = from.chars().count();
     
     let mut last = None;
@@ -186,8 +190,10 @@ pub fn stream(file: &mut File, from: &String, to: &String) -> Result<(), std::io
 
     let mut prev_buffer = vec![];
 
+    let mut all_buffers: Vec<Vec<u8>> = vec![];
+
     loop {
-        let mut buffer = vec![0; byte_size];
+        let mut buffer = vec![0; 8192];
 
         match file.read(&mut buffer) {
             Ok(0) => break, // Okuma bitti
@@ -220,13 +226,15 @@ pub fn stream(file: &mut File, from: &String, to: &String) -> Result<(), std::io
                                 true => {
                                     prev_buffer = buffer.clone();
 
+                                    //println!("işte prev buffer: {:#?}", prev_buffer);
+
                                     last = Some(clone_from.clone());
 
                                     should_write = ChangeStatus::LastCollected;
 
                                     break;
                                 },
-                                false => ()
+                                false => continue
                             }
                         }
                     },
@@ -249,25 +257,18 @@ pub fn stream(file: &mut File, from: &String, to: &String) -> Result<(), std::io
                                 prev_buffer = vec![];
                             },
                             _ => {
-                                loop {
-                                    let mut get_from = get_from.clone();
-                                    from_length = get_from.chars().count();
+                                let mut get_from = get_from.chars().collect::<VecDeque<_>>();
 
-                                    get_from.remove(0);
-            
-                                    match clone_buffer.starts_with(&*get_from) {
+                                while get_from.pop_front().is_some() {
+                                    let current_str = get_from.iter().collect();
+
+                                    match clone_buffer.starts_with(&current_str) {
                                         true => {
-                                            first = Some(get_from);
+                                            first = Some(current_str);
 
                                             should_write = ChangeStatus::LastToStart;
                                         },
                                         false => ()
-                                    }
-
-                                    from_length = from_length - 1;
-            
-                                    if from_length == 1 {
-                                        break;
                                     }
                                 }
 
@@ -284,52 +285,59 @@ pub fn stream(file: &mut File, from: &String, to: &String) -> Result<(), std::io
 
         match should_write {
             ChangeStatus::None => {
-                match file.write_all(&buffer) {
+                println!("none'a gelindi!");
+                /*match file.write_all(&buffer) {
                     Ok(_) => (),
                     Err(error) => return Err(error)
-                }
+                }*/
+
+                all_buffers.push(buffer);
             },
             ChangeStatus::Whole => {
-                match file.write_all(&to.as_bytes()) {
+                println!("whole'a gelindi!");
+                /*match file.write_all(&to.as_bytes()) {
                     Ok(_) => (),
                     Err(error) => return Err(error)
-                }
+                }*/
+
+                
+                all_buffers.push(get_string.replace(from, to).as_bytes().to_vec());
 
                 last = None;
                 first = None;
             },
             ChangeStatus::LastCollected => (),
             ChangeStatus::LastToStart => {
-                match prev_buffer.len() {
+                println!("last to start'a gelindi!");
+                /*match prev_buffer.len() {
                     0 => panic!("prev_buffer variable shouldn't be the length of 0 at this moment, panicking."),
                     _ => ()
-                }
+                }*/
 
                 match last {
                     None => panic!("last variable shouldn't be the length of 0 at this moment, panicking."),
                     Some(mut last) => {
-                        prev_buffer.reverse();
+                        let mut last_as_bytes = last.as_bytes().to_vec();
 
-                        let mut new_last = None;
+                        let mut prev_buffer = prev_buffer.clone();
 
-                        unsafe {
-                            let mut newest_last: &mut [u8] = last.as_mut_vec();
-                            newest_last.reverse();
-                            new_last = Some(newest_last)
+                        let start_length = prev_buffer.len() - last_as_bytes.len();
+
+                        let mut last_count = 0;
+
+
+                        for (offset, byte) in last_as_bytes.iter().enumerate() {
+                            prev_buffer[(start_length + offset) - 1] = *byte;
                         }
 
-                        if let Some(last) = new_last {
-                            for (index, s) in last.iter().enumerate() {
-                                prev_buffer[index] = *s;
-                            }
+                        /*for i in start_length..prev_buffer.len() {
+                            prev_buffer[i] = last_as_bytes[last_count];
 
-                            prev_buffer.reverse();
+                            last_count = last_count + 1;
+                        }*/
 
-                            match file.write_all(&prev_buffer) {
-                                Ok(_) => (),
-                                Err(error) => return Err(error)
-                            }
-                        }
+                        println!("işte ve şimdi prev buffer: {:#?}", prev_buffer);
+                        all_buffers.push(prev_buffer);
                     }
                 }
 
@@ -342,10 +350,12 @@ pub fn stream(file: &mut File, from: &String, to: &String) -> Result<(), std::io
                             buffer[index] = *s;
                         }
 
-                        match file.write_all(&buffer) {
+                        all_buffers.push(buffer);
+
+                        /*match file.write_all(&buffer) {
                             Ok(_) => (),
                             Err(error) => return Err(error)
-                        }
+                        }*/
                     }
 
                 }
@@ -355,6 +365,24 @@ pub fn stream(file: &mut File, from: &String, to: &String) -> Result<(), std::io
                 first = None;
             }
         }
+    }
+
+    let mut new_file = match File::create(path) {
+        Ok(file) => file,
+        Err(error) => return Err(error)
+    };
+
+    for mut buffer in all_buffers {
+        println!("işte yazılan buffer'lar: {:#?}", buffer);
+
+        while buffer.last() == Some(&0) {
+            buffer.pop();
+        }
+
+        match new_file.write_all(&buffer) {
+            Ok(_) => (),
+            Err(error) => return Err(error)
+        }   
     }
 
     Ok(())

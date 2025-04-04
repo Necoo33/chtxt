@@ -48,8 +48,16 @@ fn main() -> io::Result<()> {
             3 => {
                 match arg.as_str() {
                     "" | "*" | "./*" | "./" | "." => (),
-                    "--ext" | "--extension" | "--extensions" => phase = ArgumentCapturingPhase::AllowedExtensions,
-                    "--bt" | "--buffering-threshold" => phase = ArgumentCapturingPhase::BufferingThreshold,
+                    "--ext" | "--extension" | "--extensions" => {
+                        phase = ArgumentCapturingPhase::AllowedExtensions;
+
+                        continue;
+                    }
+                    "--bt" | "--buffering-threshold" => {
+                        phase = ArgumentCapturingPhase::BufferingThreshold;
+
+                        continue;
+                    },
                     _ => {
                         let back_paths = arg.matches("../").count();
 
@@ -104,8 +112,16 @@ fn main() -> io::Result<()> {
             },
             4 => {
                 match arg.as_str() {
-                    "--ext" | "--extension" | "--extensions" => phase = ArgumentCapturingPhase::AllowedExtensions,
-                    "--bt" | "--buffering-threshold" => phase = ArgumentCapturingPhase::BufferingThreshold,
+                    "--ext" | "--extension" | "--extensions" => {
+                        phase = ArgumentCapturingPhase::AllowedExtensions;
+
+                        continue;
+                    },
+                    "--bt" | "--buffering-threshold" => {
+                        phase = ArgumentCapturingPhase::BufferingThreshold;
+
+                        continue;
+                    },
                     _ => ()
                 }
 
@@ -156,8 +172,16 @@ fn main() -> io::Result<()> {
             },
             _ => {
                 match arg.as_str() {
-                    "--ext" | "--extension" | "--extensions" => phase = ArgumentCapturingPhase::AllowedExtensions,
-                    "--bt" | "--buffering-threshold" => phase = ArgumentCapturingPhase::BufferingThreshold,
+                    "--ext" | "--extension" | "--extensions" => {
+                        phase = ArgumentCapturingPhase::AllowedExtensions;
+
+                        continue;
+                    },
+                    "--bt" | "--buffering-threshold" => {
+                        phase = ArgumentCapturingPhase::BufferingThreshold;
+
+                        continue;
+                    },
                     _ => ()
                 }
 
@@ -200,10 +224,9 @@ fn main() -> io::Result<()> {
                     _ => ()
                 }
             }
-            _ => continue
         }
     }
-
+    
     match phase {
         ArgumentCapturingPhase::Options => {
             println!("Welcome to chtxt, that program is for changing given texts with another on file/files in specified path.");
